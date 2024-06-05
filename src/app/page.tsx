@@ -2,6 +2,7 @@
 
 import { TokenBalance } from "./utils/types";
 import SwapToSolButton from "./components/SwapToSolButton";
+import CloseAccountButton from "./components/CloseAccountButton";
 import Navbar from "./components/Navbar"; // Import the Navbar component
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -143,6 +144,11 @@ export default function Home() {
                       <td>{token.hasJupiterQuote ? "Yes" : "No"}</td>
                       <td>
                         <SwapToSolButton token={token} />
+                        {parseFloat(token.amount) === 0 && (
+                          <CloseAccountButton
+                            accountPubkey={new PublicKey(token.pubkey)}
+                          />
+                        )}
                       </td>
                     </tr>
                   ))}
