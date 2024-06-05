@@ -1,112 +1,137 @@
-import Image from "next/image";
+"use client";
+
+import React, { useState, useEffect, useCallback } from "react";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { PublicKey, ParsedAccountData } from "@solana/web3.js";
+import { TokenListProvider, TokenInfo } from "@solana/spl-token-registry";
+import axios from "axios";
+import SwapToSolButton from "./components/SwapToSolButton";
+
+type TokenBalance = {
+  pubkey: string;
+  mint: string;
+  amount: string;
+  name: string;
+  hasJupiterQuote: boolean;
+};
 
 export default function Home() {
+  const { connection } = useConnection();
+  const { publicKey } = useWallet();
+  const [tokenBalances, setTokenBalances] = useState<TokenBalance[]>([]);
+  const [tokenMap, setTokenMap] = useState<Map<string, TokenInfo>>(new Map());
+
+  useEffect(() => {
+    const fetchTokenList = async () => {
+      const tokens = await new TokenListProvider().resolve();
+      const tokenList = tokens.filterByClusterSlug("mainnet-beta").getList();
+      const tokenMap = new Map(
+        tokenList.map((token) => [token.address, token])
+      );
+      setTokenMap(tokenMap);
+    };
+
+    fetchTokenList();
+  }, []);
+
+  const fetchTokenBalances = useCallback(async () => {
+    if (!publicKey) return;
+
+    try {
+      const accounts = await connection.getParsedTokenAccountsByOwner(
+        publicKey,
+        {
+          programId: TOKEN_PROGRAM_ID,
+        }
+      );
+
+      const balances = await Promise.all(
+        accounts.value.map(async ({ pubkey, account }) => {
+          const parsedAccountData = account.data as ParsedAccountData;
+          const parsedInfo = parsedAccountData.parsed?.info;
+          const mint = parsedInfo?.mint;
+          const amount = parsedInfo?.tokenAmount?.uiAmountString;
+          const tokenInfo = mint ? tokenMap.get(mint) : undefined;
+          const name = tokenInfo ? tokenInfo.name : "Unregistered Token";
+
+          const SOL_MINT = "So11111111111111111111111111111111111111112";
+          const amountIn = parseFloat(amount) * 10 ** 6; // Convert amount to smallest unit
+
+          // Fetch Jupiter quote
+          let hasJupiterQuote = false;
+          try {
+            const routesResponse = await axios.get(
+              "https://quote-api.jup.ag/v1/quote",
+              {
+                params: {
+                  inputMint: mint,
+                  outputMint: SOL_MINT,
+                  amount: amountIn,
+                  slippage: 1, // 1% slippage
+                },
+              }
+            );
+
+            const routes = routesResponse.data.data;
+            if (routes && routes.length > 0) {
+              hasJupiterQuote = true;
+            }
+          } catch (error) {
+            console.error(`Failed to fetch Jupiter quote for ${name}:`, error);
+          }
+
+          return {
+            pubkey: pubkey.toBase58(),
+            mint: mint || "Unknown Mint",
+            amount: amount || "0",
+            name: name,
+            hasJupiterQuote: hasJupiterQuote,
+          };
+        })
+      );
+
+      setTokenBalances(balances);
+    } catch (error) {
+      console.error("Failed to fetch token balances:", error);
+    }
+  }, [publicKey, connection, tokenMap]);
+
+  useEffect(() => {
+    fetchTokenBalances();
+  }, [publicKey, fetchTokenBalances]);
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">src/app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:size-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
-
-      <div className="relative z-[-1] flex place-items-center before:absolute before:h-[300px] before:w-full before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 sm:before:w-[480px] sm:after:w-[240px] before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:mb-0 lg:w-full lg:max-w-5xl lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Explore starter templates for Next.js.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-balance text-sm opacity-50">
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
+    <main className="flex items-center justify-center min-h-screen">
+      <div className="border hover:border-slate-900 rounded p-4">
+        <WalletMultiButton />
+        {tokenBalances.length > 0 && (
+          <div className="mt-4">
+            <h2>Token Balances</h2>
+            <table className="table-auto">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Mint</th>
+                  <th>Amount</th>
+                  <th>Jupiter Quote Available</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tokenBalances.map((token, index) => (
+                  <tr key={index}>
+                    <td>{token.name}</td>
+                    <td>{token.mint}</td>
+                    <td>{token.amount}</td>
+                    <td>{token.hasJupiterQuote ? "Yes" : "No"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <SwapToSolButton tokenBalances={tokenBalances} />
       </div>
     </main>
   );
