@@ -1,0 +1,12 @@
+/* styles.css */
+.gradient-background {
+  background: linear-gradient(to bottom, black, #778987);
+  min-height: 100vh; /* Ensures it covers the full viewport height */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+body{
+  margin:0px !important;
+}

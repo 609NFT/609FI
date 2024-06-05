@@ -1,26 +1,23 @@
 "use client";
 
+import { TokenBalance } from "./utils/types";
+import SwapToSolButton from "./components/SwapToSolButton";
+import Navbar from "./components/Navbar"; // Import the Navbar component
+
 import React, { useState, useEffect, useCallback } from "react";
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { PublicKey, ParsedAccountData } from "@solana/web3.js";
 import { TokenListProvider, TokenInfo } from "@solana/spl-token-registry";
-import axios from "axios";
-import SwapToSolButton from "./components/SwapToSolButton";
-
-type TokenBalance = {
-  pubkey: string;
-  mint: string;
-  amount: string;
-  name: string;
-  hasJupiterQuote: boolean;
-};
+import { getQuote } from "./utils/jupiterApi";
+import "./styles/styles.css"; // Import the CSS file
 
 export default function Home() {
   const { connection } = useConnection();
   const { publicKey } = useWallet();
   const [tokenBalances, setTokenBalances] = useState<TokenBalance[]>([]);
+  const [filteredBalances, setFilteredBalances] = useState<TokenBalance[]>([]);
+  const [hideZeroBalance, setHideZeroBalance] = useState(false);
   const [tokenMap, setTokenMap] = useState<Map<string, TokenInfo>>(new Map());
 
   useEffect(() => {
@@ -58,29 +55,14 @@ export default function Home() {
 
           const SOL_MINT = "So11111111111111111111111111111111111111112";
           const amountIn = parseFloat(amount) * 10 ** 6; // Convert amount to smallest unit
+          const slippage = 1; // 1% slippage
 
-          // Fetch Jupiter quote
-          let hasJupiterQuote = false;
-          try {
-            const routesResponse = await axios.get(
-              "https://quote-api.jup.ag/v1/quote",
-              {
-                params: {
-                  inputMint: mint,
-                  outputMint: SOL_MINT,
-                  amount: amountIn,
-                  slippage: 1, // 1% slippage
-                },
-              }
-            );
-
-            const routes = routesResponse.data.data;
-            if (routes && routes.length > 0) {
-              hasJupiterQuote = true;
-            }
-          } catch (error) {
-            console.error(`Failed to fetch Jupiter quote for ${name}:`, error);
-          }
+          const quote = await getQuote(mint, SOL_MINT, amountIn, slippage);
+          const hasJupiterQuote = !!(
+            quote &&
+            quote.routePlan &&
+            quote.routePlan.length > 0
+          );
 
           return {
             pubkey: pubkey.toBase58(),
@@ -88,11 +70,13 @@ export default function Home() {
             amount: amount || "0",
             name: name,
             hasJupiterQuote: hasJupiterQuote,
+            quote: quote,
           };
         })
       );
 
       setTokenBalances(balances);
+      setFilteredBalances(balances);
     } catch (error) {
       console.error("Failed to fetch token balances:", error);
     }
@@ -102,37 +86,72 @@ export default function Home() {
     fetchTokenBalances();
   }, [publicKey, fetchTokenBalances]);
 
+  useEffect(() => {
+    if (hideZeroBalance) {
+      setFilteredBalances(
+        tokenBalances.filter((token) => parseFloat(token.amount) > 0)
+      );
+    } else {
+      setFilteredBalances(tokenBalances);
+    }
+  }, [hideZeroBalance, tokenBalances]);
+
+  const handleFilterChange = () => {
+    setHideZeroBalance(!hideZeroBalance);
+  };
+
   return (
-    <main className="flex items-center justify-center min-h-screen">
-      <div className="border hover:border-slate-900 rounded p-4">
-        <WalletMultiButton />
-        {tokenBalances.length > 0 && (
+    <div>
+      <Navbar />
+      <main className="gradient-background">
+        <div className="border hover:border-slate-900 rounded p-4 mt-16">
+          <button
+            onClick={fetchTokenBalances}
+            className="btn btn-secondary mt-4"
+          >
+            Refresh Balances
+          </button>
           <div className="mt-4">
-            <h2>Token Balances</h2>
-            <table className="table-auto">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Mint</th>
-                  <th>Amount</th>
-                  <th>Jupiter Quote Available</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tokenBalances.map((token, index) => (
-                  <tr key={index}>
-                    <td>{token.name}</td>
-                    <td>{token.mint}</td>
-                    <td>{token.amount}</td>
-                    <td>{token.hasJupiterQuote ? "Yes" : "No"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <label>
+              <input
+                type="checkbox"
+                checked={hideZeroBalance}
+                onChange={handleFilterChange}
+              />
+              Hide tokens with 0 balance
+            </label>
           </div>
-        )}
-        <SwapToSolButton tokenBalances={tokenBalances} />
-      </div>
-    </main>
+          {filteredBalances.length > 0 && (
+            <div className="mt-4">
+              <h2>Token Balances</h2>
+              <table className="table-auto">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Mint</th>
+                    <th>Amount</th>
+                    <th>Has Jupiter Quote</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredBalances.map((token, index) => (
+                    <tr key={index}>
+                      <td>{token.name}</td>
+                      <td>{token.mint}</td>
+                      <td>{token.amount}</td>
+                      <td>{token.hasJupiterQuote ? "Yes" : "No"}</td>
+                      <td>
+                        <SwapToSolButton token={token} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
   );
 }
