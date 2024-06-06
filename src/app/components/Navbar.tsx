@@ -7,7 +7,7 @@ const Navbar = () => {
     <nav className="navbar">
       <div className="navbar-container">
         <div className="navbar-logo">
-          <a href="/">SoloFi</a>
+          <a href="/">SoloFinance</a>
         </div>
         <div className="navbar-wallet">
           <WalletMultiButton />

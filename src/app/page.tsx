@@ -105,55 +105,65 @@ export default function Home() {
     <div>
       <Navbar />
       <main className="gradient-background">
-        <div className="border hover:border-slate-900 rounded p-4 mt-16">
-          <button
-            onClick={fetchTokenBalances}
-            className="btn btn-secondary mt-4"
-          >
+        <div className="filter-section">
+          <label>
+            <input
+              type="checkbox"
+              checked={hideZeroBalance}
+              onChange={handleFilterChange}
+            />
+            Hide tokens with 0 balance
+          </label>
+          <button onClick={fetchTokenBalances} className="btn btn-secondary">
             Refresh Balances
           </button>
-          <div className="mt-4">
-            <label>
-              <input
-                type="checkbox"
-                checked={hideZeroBalance}
-                onChange={handleFilterChange}
-              />
-              Hide tokens with 0 balance
-            </label>
-          </div>
+        </div>
+        <div className="table-container">
           {filteredBalances.length > 0 && (
-            <div className="mt-4">
+            <div>
               <h2>Token Balances</h2>
-              <table className="table-auto">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Mint</th>
-                    <th>Amount</th>
-                    <th>Has Jupiter Quote</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredBalances.map((token, index) => (
-                    <tr key={index}>
-                      <td>{token.name}</td>
-                      <td>{token.mint}</td>
-                      <td>{token.amount}</td>
-                      <td>{token.hasJupiterQuote ? "Yes" : "No"}</td>
-                      <td>
-                        <SwapToSolButton token={token} />
-                        {parseFloat(token.amount) === 0 && (
-                          <CloseAccountButton
-                            accountPubkey={new PublicKey(token.pubkey)}
-                          />
-                        )}
-                      </td>
+              <div className="table-responsive">
+                <table className="table-auto">
+                  <thead>
+                    <tr className="table-header">
+                      <th className="px-4 py-2">Name</th>
+                      <th className="px-4 py-2">Mint</th>
+                      <th className="px-4 py-2">Amount</th>
+                      <th className="px-4 py-2">Has Jupiter Quote</th>
+                      <th className="px-4 py-2">Action</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {filteredBalances.map((token, index) => (
+                      <tr key={index} className="table-row">
+                        <td className="px-4 py-2">{token.name}</td>
+                        <td className="px-4 py-2">
+                          <a
+                            target="_blank"
+                            href={`https://solscan.io/token/${token.mint}`}
+                          >
+                            {token.mint}
+                          </a>
+                        </td>
+                        <td className="px-4 py-2">{token.amount}</td>
+                        <td className="px-4 py-2">
+                          {token.hasJupiterQuote ? "Yes" : "No"}
+                        </td>
+                        <td className="px-4 py-2">
+                          {token.hasJupiterQuote && (
+                            <SwapToSolButton token={token} />
+                          )}
+                          {parseFloat(token.amount) === 0 && (
+                            <CloseAccountButton
+                              accountPubkey={new PublicKey(token.pubkey)}
+                            />
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>

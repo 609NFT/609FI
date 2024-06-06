@@ -1,13 +1,87 @@
-/* styles.css */
 .gradient-background {
   background: linear-gradient(to bottom, black, #778987);
-  min-height: 100vh; /* Ensures it covers the full viewport height */
+  min-height: 100vh;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  color:white;
+  color: white;
+  padding-top: 100px;
+  padding-bottom: 100px;
 }
 
-body{
-  margin:0px !important;
+body {
+  margin: 0px !important;
+}
+
+.table-container {
+  margin-top: 2rem;
+  width: 80%;
+}
+
+.table-responsive {
+  width: 100%;
+  border-radius: 0.5rem; /* Added border radius */
+  overflow-x: auto;
+}
+
+.table-auto {
+  width: 100%; /* Ensures the table takes the full width of the container */
+  table-layout: fixed; /* Ensures the columns adjust to fill the available space */
+}
+
+.table-header {
+  background-color: #444;
+  color: white;
+  padding: 12px; /* Added padding */
+}
+
+.table-row:nth-child(even) {
+  background-color: #333;
+}
+
+.table-row:nth-child(odd) {
+  background-color: #222;
+}
+
+.table-row td {
+  padding: 12px; /* Added padding */
+  word-wrap: break-word; /* Ensures long words break */
+  white-space: normal; /* Allows text to wrap */
+  max-width: 200px; /* Set a fixed width to each cell */
+}
+
+.filter-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 80%;
+  background-color: #333;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  margin-top: 1rem;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.filter-section label {
+  color: white;
+}
+
+.filter-section button {
+  margin: 0 0.5rem;
+  color: black;
+  cursor: pointer;
+  padding: 10px;
+  border-radius: 30px;
+}
+
+button.btn.btn-primary {
+  cursor: pointer;
+  padding: 10px;
+  border-radius: 30px;
+}
+
+button.btn.btn-danger {
+  cursor: pointer;
+  padding: 10px;
+  border-radius: 30px;
 }
