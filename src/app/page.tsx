@@ -126,7 +126,6 @@ export default function Home() {
                 <table className="table-auto">
                   <thead>
                     <tr className="table-header">
-                      <th className="px-4 py-2">Name</th>
                       <th className="px-4 py-2">Mint</th>
                       <th className="px-4 py-2">Amount</th>
                       <th className="px-4 py-2">Has Jupiter Quote</th>
@@ -136,7 +135,6 @@ export default function Home() {
                   <tbody>
                     {filteredBalances.map((token, index) => (
                       <tr key={index} className="table-row">
-                        <td className="px-4 py-2">{token.name}</td>
                         <td className="px-4 py-2">
                           <a
                             target="_blank"
