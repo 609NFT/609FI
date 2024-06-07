@@ -17,6 +17,7 @@ export default function Home() {
   const [tokenBalances, setTokenBalances] = useState<TokenBalance[]>([]);
   const [tokenMap, setTokenMap] = useState<Map<string, TokenInfo>>(new Map());
   const [loading, setLoading] = useState(false);
+  const [hideWithBalances, setHideWithBalances] = useState(false);
 
   useEffect(() => {
     const fetchTokenList = async () => {
@@ -75,9 +76,11 @@ export default function Home() {
         })
       );
 
-      // Only keep tokens without a Jupiter quote
-      const filteredBalances = balances.filter(
-        (token) => !token.hasJupiterQuote
+      // Filter based on checkbox state
+      const filteredBalances = balances.filter((token) =>
+        hideWithBalances
+          ? parseFloat(token.amount) === 0
+          : !token.hasJupiterQuote
       );
 
       setTokenBalances(filteredBalances);
@@ -86,17 +89,29 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [publicKey, connection, tokenMap]);
+  }, [publicKey, connection, tokenMap, hideWithBalances]);
 
   useEffect(() => {
     fetchTokenBalances();
   }, [publicKey, fetchTokenBalances]);
+
+  const handleCheckboxChange = () => {
+    setHideWithBalances(!hideWithBalances);
+  };
 
   return (
     <div>
       <Navbar />
       <main className="gradient-background">
         <div className="filter-section">
+          <label>
+            <input
+              type="checkbox"
+              checked={hideWithBalances}
+              onChange={handleCheckboxChange}
+            />
+            Hide tokens with balances
+          </label>
           <button
             onClick={fetchTokenBalances}
             className="btn btn-secondary"
@@ -120,7 +135,7 @@ export default function Home() {
             </div>
           ) : tokenBalances.length > 0 ? (
             <div>
-              <h2>Tokens Without Jupiter Quote</h2>
+              <h2>Tokens Available to Close or Swap</h2>
               <div className="table-responsive">
                 <table className="table-auto">
                   <thead>
@@ -144,10 +159,33 @@ export default function Home() {
                         </td>
                         <td className="px-4 py-2">{token.amount}</td>
                         <td className="px-4 py-2">
-                          {parseFloat(token.amount) === 0 && (
+                          {parseFloat(token.amount) === 0 ? (
                             <CloseAccountButton
                               accountPubkey={new PublicKey(token.pubkey)}
                             />
+                          ) : (
+                            <div>
+                              <div className="btn btn-danger">
+                                <a
+                                  href={`https://jup.ag/swap/${token.mint}-SOL`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="btn btn-primary"
+                                >
+                                  Swap on Jupiter
+                                </a>
+                              </div>
+                              <div className="btn btn-danger">
+                                <a
+                                  href={`https://raydium.io/swap/?inputMint=${token.mint}&outputMint=sol`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="btn btn-secondary"
+                                >
+                                  Swap on Raydium
+                                </a>
+                              </div>
+                            </div>
                           )}
                         </td>
                       </tr>

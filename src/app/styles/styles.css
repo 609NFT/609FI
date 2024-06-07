@@ -1,4 +1,5 @@
 /* styles/styles.css */
+@import url('https://fonts.googleapis.com/css2?family=Bangers&display=swap');
 
 .gradient-background {
   background: linear-gradient(to bottom, black, #F6E727);
@@ -9,6 +10,7 @@
   color: white;
   padding-top: 100px;
   padding-bottom: 100px;
+  font-family: 'Bangers', system-ui !important;
 }
 
 a:-webkit-any-link {
@@ -80,6 +82,8 @@ body {
   padding: 10px;
   border-radius: 30px;
   transition: background-color 0.3s;
+  font-family: 'Bangers', system-ui !important;
+  border:none !important;
 }
 
 button.btn.btn-primary {
@@ -94,6 +98,8 @@ button.btn.btn-danger {
   padding: 10px;
   border-radius: 30px;
   transition: background-color 0.3s;
+  border:none !important;
+  font-family: 'Bangers', system-ui !important;
 }
 
 /* Spinner */
@@ -127,4 +133,9 @@ button.btn.btn-danger {
 .btn-secondary:disabled {
   cursor: not-allowed;
   opacity: 0.5;
+}
+
+.swap-buttons {
+  display: flex;
+  gap: 8px; /* Space between Swap on Jupiter and Swap on Raydium buttons */
 }
