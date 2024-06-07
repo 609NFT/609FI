@@ -10,7 +10,7 @@ const Navbar = () => {
       <div className="navbar-container">
         <div className="navbar-logo">
           <a href="/">
-            <Image src={logo} height="75" width="175" alt="BotFi" />
+            <Image src={logo} height="60.1" width="140" alt="BotFi" />
           </a>
         </div>
         <div className="navbar-wallet">
