@@ -1,10 +1,7 @@
 import React, { useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey, Transaction } from "@solana/web3.js";
-import {
-  createCloseAccountInstruction,
-  TOKEN_PROGRAM_ID,
-} from "@solana/spl-token";
+import { createCloseAccountInstruction } from "@solana/spl-token";
 
 interface CloseAccountButtonProps {
   accountPubkey: PublicKey;
@@ -36,9 +33,13 @@ const CloseAccountButton: React.FC<CloseAccountButtonProps> = ({
       if (signTransaction) {
         const signedTransaction = await signTransaction(txn);
         const serializedTransaction = signedTransaction.serialize();
-        await connection.sendRawTransaction(serializedTransaction);
+        const txid = await connection.sendRawTransaction(serializedTransaction);
+        await connection.confirmTransaction(txid, "confirmed");
 
-        alert("Account closed successfully!");
+        alert(
+          "Account closed successfully! Enjoy your SOL. Please refresh tokens to see updated list."
+        );
+        console.log(`Account closed successfully. Transaction ID: ${txid}`);
       } else {
         alert("Wallet does not support transaction signing");
       }
@@ -56,7 +57,14 @@ const CloseAccountButton: React.FC<CloseAccountButtonProps> = ({
       className="btn btn-danger"
       disabled={loading}
     >
-      {loading ? "Closing..." : "Close Account"}
+      {loading ? (
+        <>
+          <div className="spinner" />
+          Closing...
+        </>
+      ) : (
+        "Close Account"
+      )}
     </button>
   );
 };

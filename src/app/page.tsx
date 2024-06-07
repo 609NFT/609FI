@@ -1,25 +1,22 @@
 "use client";
 
-import { TokenBalance } from "./utils/types";
-import SwapToSolButton from "./components/SwapToSolButton";
-import CloseAccountButton from "./components/CloseAccountButton";
-import Navbar from "./components/Navbar"; // Import the Navbar component
-
 import React, { useState, useEffect, useCallback } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { PublicKey, ParsedAccountData } from "@solana/web3.js";
 import { TokenListProvider, TokenInfo } from "@solana/spl-token-registry";
+import CloseAccountButton from "./components/CloseAccountButton";
+import Navbar from "./components/Navbar";
+import { TokenBalance } from "./utils/types";
 import { getQuote } from "./utils/jupiterApi";
-import "./styles/styles.css"; // Import the CSS file
+import "./styles/styles.css";
 
 export default function Home() {
   const { connection } = useConnection();
   const { publicKey } = useWallet();
   const [tokenBalances, setTokenBalances] = useState<TokenBalance[]>([]);
-  const [filteredBalances, setFilteredBalances] = useState<TokenBalance[]>([]);
-  const [hideZeroBalance, setHideZeroBalance] = useState(false);
   const [tokenMap, setTokenMap] = useState<Map<string, TokenInfo>>(new Map());
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchTokenList = async () => {
@@ -36,6 +33,8 @@ export default function Home() {
 
   const fetchTokenBalances = useCallback(async () => {
     if (!publicKey) return;
+
+    setLoading(true);
 
     try {
       const accounts = await connection.getParsedTokenAccountsByOwner(
@@ -76,10 +75,16 @@ export default function Home() {
         })
       );
 
-      setTokenBalances(balances);
-      setFilteredBalances(balances);
+      // Only keep tokens without a Jupiter quote
+      const filteredBalances = balances.filter(
+        (token) => !token.hasJupiterQuote
+      );
+
+      setTokenBalances(filteredBalances);
     } catch (error) {
       console.error("Failed to fetch token balances:", error);
+    } finally {
+      setLoading(false);
     }
   }, [publicKey, connection, tokenMap]);
 
@@ -87,72 +92,58 @@ export default function Home() {
     fetchTokenBalances();
   }, [publicKey, fetchTokenBalances]);
 
-  useEffect(() => {
-    if (hideZeroBalance) {
-      setFilteredBalances(
-        tokenBalances.filter((token) => parseFloat(token.amount) > 0)
-      );
-    } else {
-      setFilteredBalances(tokenBalances);
-    }
-  }, [hideZeroBalance, tokenBalances]);
-
-  const handleFilterChange = () => {
-    setHideZeroBalance(!hideZeroBalance);
-  };
-
   return (
     <div>
       <Navbar />
       <main className="gradient-background">
         <div className="filter-section">
-          <label>
-            <input
-              type="checkbox"
-              checked={hideZeroBalance}
-              onChange={handleFilterChange}
-            />
-            Hide tokens with 0 balance
-          </label>
-          <button onClick={fetchTokenBalances} className="btn btn-secondary">
-            Refresh Balances
+          <button
+            onClick={fetchTokenBalances}
+            className="btn btn-secondary"
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <div className="spinner" />
+                Refreshing Tokens
+              </>
+            ) : (
+              "Refresh Balances"
+            )}
           </button>
         </div>
         <div className="table-container">
-          {filteredBalances.length > 0 && (
+          {loading ? (
+            <div className="spinner-container">
+              <div className="spinner" />
+              <p>Refreshing Tokens...</p>
+            </div>
+          ) : tokenBalances.length > 0 ? (
             <div>
-              <h2>Token Balances</h2>
+              <h2>Tokens Without Jupiter Quote</h2>
               <div className="table-responsive">
                 <table className="table-auto">
                   <thead>
                     <tr className="table-header">
-                      <th className="px-4 py-2">Name</th>
-                      <th className="px-4 py-2">Mint</th>
-                      <th className="px-4 py-2">Amount</th>
-                      <th className="px-4 py-2">Has Jupiter Quote</th>
+                      <th className="px-4 py-2">Token CA</th>
+                      <th className="px-4 py-2">Token Amount</th>
                       <th className="px-4 py-2">Action</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredBalances.map((token, index) => (
+                    {tokenBalances.map((token, index) => (
                       <tr key={index} className="table-row">
-                        <td className="px-4 py-2">{token.name}</td>
                         <td className="px-4 py-2">
                           <a
                             target="_blank"
                             href={`https://solscan.io/token/${token.mint}`}
+                            rel="noreferrer"
                           >
                             {token.mint}
                           </a>
                         </td>
                         <td className="px-4 py-2">{token.amount}</td>
                         <td className="px-4 py-2">
-                          {token.hasJupiterQuote ? "Yes" : "No"}
-                        </td>
-                        <td className="px-4 py-2">
-                          {token.hasJupiterQuote && (
-                            <SwapToSolButton token={token} />
-                          )}
                           {parseFloat(token.amount) === 0 && (
                             <CloseAccountButton
                               accountPubkey={new PublicKey(token.pubkey)}
@@ -164,6 +155,10 @@ export default function Home() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          ) : (
+            <div className="no-accounts-message">
+              <h2>Wallet has no accounts to close.</h2>
             </div>
           )}
         </div>
